@@ -1,0 +1,206 @@
+openapi: "3.0.0"
+info:
+  version: "0.1.0"
+  title: CryptoBroker REST Api
+  description: CryptoBroker REST api
+servers:
+  - url: cb.jonathan-cooper.com
+paths:
+  /list:
+    get:
+      summary: Gets the top 200 coins.
+      security:
+        - apiKeyHeader: []
+      tags:
+        - MarketData
+      responses:
+        '200':
+          description: Got top 200 coins
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/ListResponse'
+        '403':
+          description: Forbidden. (Invalid API key)
+        '500':
+          description: Any error
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /buy:
+    post:
+      summary: Purchases some currency on behalf of the provided user
+      security:
+        - apiKeyHeader: []
+      tags:
+        - Transactions
+      requestBody:
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/CurrencyExchangeRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+        '500':
+          description: Any error
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /sell:
+    post:
+      summary: Sells some currency on behalf of the provided user
+      security:
+        - apiKeyHeader: []
+      tags:
+        - Transactions
+      requestBody:
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/CurrencyExchangeRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+        '500':
+          description: Any error
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /portfolio:
+    get:
+      summary: A list of all held positions and the user's wallet balance
+      security:
+        - apiKeyHeader: []
+      tags:
+        - Transactions
+      parameters:
+        - in: query
+          name: userId
+          description: The discord user guid
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/PortfolioResponse'
+  /leaderboard:
+    get:
+      summary: Gets the top 10 users and their net worth
+      security:
+        - apiKeyHeader: []
+      tags:
+        - Camaraderie
+      parameters:
+        - in: query
+          name: serverId
+          schema:
+            type: string
+          description: The discord server guid
+      responses:
+        '200':
+          description: Success
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/LeaderboardResponse'
+components:
+  securitySchemes:
+    apiKeyHeader:
+      type: apiKey
+      in: header
+      name: X-CB-API-KEY
+  schemas:
+    PortfolioResponse:
+      type: object
+      properties:
+        wallet_balance:
+          type: number
+          description: The current balance in USD
+          example: 1300
+        holdings:
+          type: array
+          description: The balance of each cryptocurrency that the user owns
+          items:
+            type: object
+            properties:
+              symbol:
+                type: string
+                description: The symbol of the owned currency
+                example: btc
+              quantity:
+                type: number
+                description: The amount owned of the currency
+                example: 5
+    LeaderboardResponse:
+      type: array
+      items:
+        type: object
+        properties:
+          user_id:
+            type: string
+            description: The discord user guid
+          net_worth:
+            type: number
+            example: 10000
+    CurrencyExchangeRequest:
+      type: object
+      properties:
+        symbol:
+          type: string
+          example: btc
+        amount:
+          type: number
+          example: 0.5
+        user:
+          type: string
+          description: The discord user guid
+    StatusResponse:
+      type: object
+      properties:
+        success:
+          type: string
+          example: true
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: Trade must be of more than 0 units of currency.
+    CryptoCurrency:
+      type: object
+      properties:
+        symbol:
+          type: string
+          example: btc
+        name:
+          type: string
+          example: Bitcoin
+        current_price:
+          type: number
+          example: 4000
+        market_cap:
+          type: number
+          example: 100000000
+    ListResponse:
+      description: List of cryptocurrencies
+      type: array
+      items:
+        $ref: '#/components/schemas/CryptoCurrency'
