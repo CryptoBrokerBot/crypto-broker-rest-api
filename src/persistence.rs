@@ -100,7 +100,7 @@ impl BrokerMapper {
     return get_wallet_balance(user_id, &client).await
   }
 
-  async fn insert_transaction(user_id : S, buy_sell : BuySellIndicator, )
+  // async fn insert_transaction(user_id : S, buy_sell : BuySellIndicator, )
 
   pub async fn buy_currency<S : AsRef<str>>(&self, symbol : S, qty : Numeric, user_id : S) -> StdResult<()> {
     // check have enough money
@@ -115,7 +115,7 @@ impl BrokerMapper {
     // create a new transaction
     let tx = client.transaction().await?;
     let new_balance = balance - (qty*current_cost);
-    update_wallet_balance(user_id, )
+    // update_wallet_balance(user_id, )
     panic!("unimplemented");
   }
 
