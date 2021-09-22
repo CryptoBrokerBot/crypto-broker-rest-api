@@ -24,16 +24,30 @@ macro_rules! get_client {
   };
 }
 
+macro_rules! result_err {
+  ($msg : expr) => {
+    {
+      use std::io::{ErrorKind,Error as StdIoErr};
+      Err(Box::new(StdIoErr::new(ErrorKind::Other,$msg)))
+    }
+  };
+}
 
-async fn get_wallet_balance(wallet_id : i32, client : &Client) -> StdResult<Numeric>{
+
+async fn get_wallet_balance<S : AsRef<str>>(user_id : S, client : &Client) -> StdResult<Numeric>{
     let query = r#"
-    SELECT walletbalance FROM serverwallets where walletid = $1 LIMIT 1;
+    SELECT walletbalance FROM serverwallets where user_id = $1 LIMIT 1;
     "#;
-    let amount : Numeric = client.query_one(query, &[&wallet_id]).await?.try_get("walletbalance")?;
+    let amount : Numeric = client.query_one(query, &[&user_id.as_ref()]).await?.try_get("walletbalance")?;
     Ok(amount)
 }
-async fn update_wallet_balance(wallet_id : i32, transaction : &mut Transaction<'_>) -> StdResult<()> {
-    panic!("not implemented");
+
+async fn update_wallet_balance<S : AsRef<str>>(user_id : S, balance : Numeric, transaction : &mut Transaction<'_>) -> StdResult<()> {
+    let affected = transaction.execute("UPDATE serverwallets SET walletbalance = $1",&[&balance]).await?;
+    if affected == 0 {
+      return result_err!("Could not find wallet for user!");
+    }
+    Ok(())
 }
 
 
@@ -80,14 +94,28 @@ impl BrokerMapper {
     Ok(price)
   }
 
-  pub async fn get_wallet_balance(&self, wallet_id : i32) -> StdResult<Numeric> {
+  pub async fn get_wallet_balance<S : AsRef<str>>(&self, user_id : S) -> StdResult<Numeric> {
     let conf = self.config.clone();
     let client = get_client!(conf);
-    return get_wallet_balance(wallet_id, &client).await
+    return get_wallet_balance(user_id, &client).await
   }
 
-  pub async fn buy_currency<S : AsRef<str>>(&self, symbol : S, qty : Numeric, wallet_id : u64) -> StdResult<()> {
+  async fn insert_transaction(user_id : S, buy_sell : BuySellIndicator, )
+
+  pub async fn buy_currency<S : AsRef<str>>(&self, symbol : S, qty : Numeric, user_id : S) -> StdResult<()> {
     // check have enough money
+    assert!(qty > Numeric::ZERO);
+    let conf = self.config.clone();
+    let mut client : Client = get_client!(conf);
+    let balance = get_wallet_balance(user_id, &client).await?;
+    let current_cost = self.get_latest_price(symbol).await?;
+    if balance <= Numeric::ZERO || qty*current_cost > balance {
+      return result_err!("User does not have enough money in their wallet. Please sell a position or add some money!");
+    }
+    // create a new transaction
+    let tx = client.transaction().await?;
+    let new_balance = balance - (qty*current_cost);
+    update_wallet_balance(user_id, )
     panic!("unimplemented");
   }
 
@@ -96,21 +124,31 @@ impl BrokerMapper {
     panic!("unimplemented");
   }
 
-  pub async fn get_portfolio(&self, wallet_id : u64) -> StdResult<Portfolio> {
-    panic!("unimplemented");
+  pub async fn get_portfolio<S : AsRef<str>>(&self, user_id : S) -> StdResult<Portfolio> {
+    let conf = self.config.clone();
+    let client : Client = get_client!(conf);
+    let positions : Vec<Position> = 
+    client.query("SELECT name,qty,symbol,totalcost FROM vpositions where userId = $1",&[&user_id.as_ref()]).await?
+          .iter()
+          .map(|r| Position::try_from(r).expect("Could not construct a position."))
+          .collect();
+    let balance = get_wallet_balance(user_id, &client).await?;
+    Ok(Portfolio{
+        balance,positions
+    })
   }
 
   pub async fn update_server_patrons<S : AsRef<str>>(&self, user_id : S, server_id : S) -> StdResult<()> {
     unimplemented!("please implement updating server patrons");
   }
 
-  pub async fn create_wallet<S : AsRef<str>>(&self, user_id : S, server_id : S, balance : Numeric) -> StdResult<()> {
+  pub async fn create_wallet<S : AsRef<str>>(&self, user_id : S, balance : Numeric) -> StdResult<()> {
     let query = r#"
-        INSERT INTO serverwallets (userId,serverId, walletbalance) VALUES($1,$2,$3);
+        INSERT INTO serverwallets (userId, walletbalance) VALUES($1,$2);
     "#;
     let config = self.config.clone();
     let client : Client = get_client!(config);
-    let _ = client.execute(query, &[&user_id.as_ref(),&server_id.as_ref(),&balance]).await?;
+    let _ = client.execute(query, &[&user_id.as_ref(),&balance]).await?;
     Ok(())
   }
 }
@@ -132,6 +170,18 @@ impl TryFrom<&Row> for CurrencyData {
       market_cap : row.try_get("market_cap")?,
       volume: row.try_get("volume")?,
       coingecko_timestamp: row.try_get("coingecko_timestamp")?
+    })
+  }
+}
+
+impl TryFrom<&Row> for Position {
+  type Error = tokio_postgres::error::Error;
+  fn try_from(row : &Row) -> Result<Position,Self::Error> { 
+    Ok(Position{
+        name : row.try_get("name")?,
+        qty : row.try_get("qty")?,
+        symbol : row.try_get("symbol")?,
+        total_cost : row.try_get("totalCost")?
     })
   }
 }
