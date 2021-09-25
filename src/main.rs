@@ -8,15 +8,19 @@ use config::Config;
 use std::io::BufReader;
 use serde_yaml;
 use std::fs::File;
-use actix_web::{get, web, App, HttpServer,HttpResponse};
+use actix_web::{get, web, App, HttpServer};
 
- 
+
+
 
 #[get("test")]
 async fn get_test(app_state : web::Data<RootAppState>) -> StdResult<web::Json<Numeric>> {
     let root_state = app_state.as_ref();
     let broker_mapper = &root_state.broker_mapper;
-    let balance = broker_mapper.get_wallet_balance("andrew").await?;
+    let currencies = broker_mapper.list_currencies().await?;
+    let balance = broker_mapper.get_wallet_balance(2).await?;
+    // use rust_decimal::prelude::*;
+    // let _ = broker_mapper.create_wallet("andrewtest","andrewservertest",Numeric::from_f64(4000.0).expect("Could not convert f64 to numeric")).await?;
     Ok(web::Json(balance))
 }
 

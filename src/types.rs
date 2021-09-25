@@ -35,13 +35,8 @@ pub struct Position {
 
 #[derive(Serialize,Clone)]
 pub struct Portfolio {
-  pub balance : Numeric,
+  pub balance : f64,
   pub positions : Vec<Position>
-}
-
-#[derive(Serialize)]
-pub enum BuySellIndicator {
-    Buy,Sell
 }
 
 

@@ -57,7 +57,7 @@ Status Codes
 interface Position {
   "name" : string,
   "symbol" : string,
-  "currentValue" : number,
+  "totalCost" : number,
   "qty" : number
 };
 // Returns
@@ -76,7 +76,7 @@ Status Codes
 ```ts 
 {
   "serverId": string,
-  "users": {user_id : string, netWorth : number}[]
+  "users": string[]
 }
 ```
 Status Codes
