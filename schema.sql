@@ -49,7 +49,7 @@ create index IDX_transactions on transactions (userId,cryptoId);
 
 CREATE VIEW vPortfolio AS
 WITH cteLatestPrices AS (
-  SELECT id as cryptoId, price as latestPrice FROM (SELECT id, price, ROW_NUMBER() OVER(partition by id order by asOf DESC) as rn
+  SELECT id as cryptoId, symbol, name, price as latestPrice FROM (SELECT id, price, symbol, name, ROW_NUMBER() OVER(partition by id order by asOf DESC) as rn
   FROM cryptodata) res WHERE res.rn = 1
 ),
 ctePositions AS (
@@ -64,7 +64,11 @@ ctePositions AS (
     t.cryptoId
 )
 SELECT userId,
-p.cryptoId, 
+p.cryptoId,
+lp.symbol,
+lp.name,
+qty,
+latestPrice,
 qty*latestPrice as currentValue,
 lastTransactionTs
 FROM ctePositions p

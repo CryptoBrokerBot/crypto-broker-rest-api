@@ -1,4 +1,4 @@
-use crate::BrokerMapper;
+use crate::persistence::CryptoPortfolioDao;
 use serde;
 use serde::{Serialize};
 use chrono::{DateTime,Utc};
@@ -26,22 +26,22 @@ pub struct CurrencyData {
 #[derive(Serialize,Clone)]
 pub struct Position {
   pub name : String,
-  pub symbol : String,
+  pub crypto_id : String,
   // change serialize name
-  #[serde(rename = "totalCost")]
-  pub total_cost : f64,
-  pub qty : f64,
+  #[serde(rename = "currentValue")]
+  pub current_value : Numeric,
+  pub qty : Numeric,
 }
 
 #[derive(Serialize,Clone)]
 pub struct Portfolio {
-  pub balance : f64,
+  pub balance : Numeric,
   pub positions : Vec<Position>
 }
 
 
 pub struct RootAppState {
-    pub broker_mapper : BrokerMapper
+    pub broker_mapper : CryptoPortfolioDao
 }
 
 // Copied from serde example https://serde.rs/custom-date-format.html
