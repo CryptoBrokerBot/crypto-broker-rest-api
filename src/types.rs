@@ -1,10 +1,25 @@
 use crate::BrokerMapper;
 use serde;
-use serde::{Serialize};
+use serde::{Serialize, Deserialize};
 use chrono::{DateTime,Utc};
 pub type StdError = std::error::Error;
 pub type StdResult<T> = Result<T,Box<dyn std::error::Error>>;
 pub type Numeric = rust_decimal::Decimal;
+
+#[derive(Serialize,Clone,Debug)]
+pub struct StatusResponse {
+  pub success : bool,
+  pub error_msg : Option<String>
+}
+
+impl StatusResponse {
+  pub fn ok() -> StatusResponse {
+    StatusResponse {
+      success : true,
+      error_msg : None
+    }
+  }
+}
 
 #[derive(Serialize,Clone,Debug)]
 pub struct CurrencyData {
