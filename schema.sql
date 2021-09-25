@@ -61,17 +61,7 @@ GROUP BY
 w.userId,
 t.symbol;
 
--- portfolio, and leaderboards should be views since they inherently change all the time and can be calculated from the data above
 
-CREATE OR REPLACE VIEW vportfolio
-AS SELECT w.userid,
-    t.cryptoid,
-    sum(t.cost) AS totalcost,
-    sum(t.qty) AS qty,
-    max(t.transactiontime) AS lasttransactionts
-   FROM transactions t
-     JOIN wallet w ON t.userId = w.userId
-  GROUP BY w.userid, t.cryptoId;
 -- CREATE VIEW vWalletPerformance AS
 
 -- I will finish leaderboards later
