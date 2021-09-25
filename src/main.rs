@@ -2,10 +2,11 @@ extern crate tokio;
 mod config;
 mod types;
 mod persistence;
+use log::info;
 use types::*;
 use config::*;
 use persistence::CryptoPortfolioDao;
-use actix_web::{get, web, App, HttpServer};
+use actix_web::{get, web, App, HttpServer,middleware::Logger};
 
 
 
@@ -26,10 +27,16 @@ async fn get_test(app_state : web::Data<RootAppState>) -> StdResult<web::Json<Po
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()>{
+    env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
     let config = load_config().expect("Could not load config from environment!");
     let broker_conf  = config.data_source.clone();
-    HttpServer::new(move || App::new().service(get_test).data(RootAppState{ broker_mapper: CryptoPortfolioDao::new(&broker_conf)}))
-        .bind("127.0.0.1:8080")?
-        .run()
-        .await
+    HttpServer::new(move || 
+        App::new()
+        .wrap(Logger::default())
+        .service(get_test)
+        .data(RootAppState{ broker_mapper: CryptoPortfolioDao::new(&broker_conf)})
+    )
+    .bind("127.0.0.1:8080")?
+    .run()
+    .await
 }
