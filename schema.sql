@@ -38,41 +38,24 @@ CREATE TABLE transactions (
   buySellIndicator CHAR(1) NOT NULL, -- makes life a little bit easier so we dont have to compare cost to 0 to get Buy or Sell
   qty NUMERIC(25,8) NOT NULL,-- amount of crypto purchased / sold positive indicates buy and negative indicates sell
   PRIMARY KEY (transactionId),
-  CONSTRAINT CHK_buySellIndicator CHECK(buySellIndicator in ('B','S'))
-  --This constraint syntax might be for another db software, TODO: fix this
-  --CONSTRAINT PK_transaction PRIMARY KEY (transactionId,userId),
-  --CONSTRAINT FK_transactionSymbol FOREIGN KEY (symbol) REFERENCES cryptodata(symbol) ON DELETE CASCADE,
-  --CONSTRAINT FK_transactionUser FOREIGN KEY (walletId) REFERENCES serverWallets(walletId) ON DELETE CASCADE
+  CONSTRAINT CHK_buySellIndicator CHECK(buySellIndicator in ('B','S')),
+  constraint CHK_cost CHECK( (cost > 0 and qty > 0 and buySellIndicator = 'B') or (cost < 0 and qty < 0 and buySellIndicator = 'S'))
 );
+
+create index IDX_transactions on transactions (userId,cryptoId);
 
 
 -- portfolio, and leaderboards should be views since they inherently change all the time and can be calculated from the data above
 
-CREATE VIEW vPortfolio AS
-WITH cteLatestPrices AS (
-  SELECT id as cryptoId, price as latestPrice FROM (SELECT id, price, ROW_NUMBER() OVER(partition by id order by asOf DESC) as rn
-  FROM cryptodata) res WHERE res.rn = 1
-),
-ctePositions AS (
-  SELECT w.userId, 
-  t.cryptoId, 
-  SUM(t.qty) as qty,
-  MAX(t.transactionTime) as lastTransactionTs
-  FROM transactions t 
-  JOIN wallet w on t.userId = w.userId
-  GROUP BY 
-    w.userId,
-    t.cryptoId
-)
-SELECT userId,
-p.cryptoId, 
-qty*latestPrice as currentValue,
-lastTransactionTs
-FROM ctePositions p
-JOIN cteLatestPrices lp on p.cryptoId = lp.cryptoId
-
-
-
+CREATE OR REPLACE VIEW vportfolio
+AS SELECT w.userid,
+    t.cryptoid,
+    sum(t.cost) AS totalcost,
+    sum(t.qty) AS qty,
+    max(t.transactiontime) AS lasttransactionts
+   FROM transactions t
+     JOIN wallet w ON t.userId = w.userId
+  GROUP BY w.userid, t.cryptoId;
 -- CREATE VIEW vWalletPerformance AS
 
 -- I will finish leaderboards later
