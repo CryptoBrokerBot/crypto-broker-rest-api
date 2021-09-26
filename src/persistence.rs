@@ -74,6 +74,14 @@ async fn update_wallet_balance(wallet_id : i32, transaction : &mut Transaction<'
   panic!("not implemented");
 }
 
+async fn api_keys(client : &Client) -> StdResult<Vec<String>> {
+  let query = r#"
+    SELECT key_str FROM apikeys
+  "#;
+  let key_rows = client.query(query, &[]).await?;
+  Ok(key_rows.into_iter().map(|row| row.get::<usize, &str>(0).to_string()).collect())
+}
+
 impl BrokerMapper {
   
   pub fn new(ds : &DataSource) -> BrokerMapper {
@@ -105,6 +113,12 @@ impl BrokerMapper {
       currency_list.push(CurrencyData::try_from(&row)?);
     }
     Ok(currency_list)
+  }
+
+  pub async fn api_keys(&self) -> StdResult<Vec<String>> {
+    let config = self.config.clone();
+    let client = get_client!(config);
+    api_keys(&client).await
   }
   
   pub async fn get_latest_price<S : AsRef<str>>(&self, symbol : S) -> StdResult<Numeric> {

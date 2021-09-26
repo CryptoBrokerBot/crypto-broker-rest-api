@@ -20,6 +20,11 @@ CREATE TABLE wallet (
   walletBalance NUMERIC(25,4)
 );
 
+CREATE TABLE apikeys (
+  id SERIAL PRIMARY KEY,
+  key_str VARCHAR(512),
+  description VARCHAR(1024)
+);
 
 CREATE TABLE serverpatrons (
   serverId VARCHAR(256),
