@@ -3,21 +3,17 @@ use std::fs::File;
 
 use actix_web::{get, web, App, HttpServer, Responder};
 use serde_yaml;
+use dotenv::dotenv;
 
 use types::*;
 use persistence::BrokerMapper;
-use config::Config;
+use config::load_config;
 
 mod config;
 pub mod types;
 pub mod persistence;
 mod api;
 mod middlewares;
-
-fn load_config() -> serde_yaml::Result<Config> {
-    let cfg_file = File::open("config.yaml").expect("Could not find 'config.yaml'.");
-    serde_yaml::from_reader(BufReader::new(cfg_file))
-}
 
 // Validates API keys when in release build
 #[cfg(not(debug_assertions))]
@@ -36,12 +32,13 @@ fn api_key_validatorer(_ : Vec<String>) -> impl FnMut(Option<&str>) -> bool {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()>{
-    let config = load_config().expect("ahhh");
-    let broker_conf  = config.data_sources.get(0).expect("No data sources specified in config file!").clone();
-    let api_keys = BrokerMapper::new(&broker_conf.clone()).api_keys().await.expect("Unable to load API keys.");
+    dotenv().ok();
+    let config = load_config();
+    let broker_config = config.data_source.clone();
+    let api_keys = BrokerMapper::new(&config.data_source).api_keys().await.expect("Unable to load API keys.");
     HttpServer::new(move || 
         App::new()
-            .data(RootAppState{ broker_mapper: BrokerMapper::new(&broker_conf) })
+            .data(RootAppState{ broker_mapper: BrokerMapper::new(&broker_config) })
             .wrap(middlewares::apikey::ApiKeyService::from_validator(api_key_validatorer(api_keys.clone())))
             .wrap(middlewares::error::ErrorHandlerService)
             .service(api::routes::list)
