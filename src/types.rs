@@ -1,7 +1,8 @@
 use crate::BrokerMapper;
 use serde;
-use serde::{Serialize, Deserialize};
+use serde::{Serialize};
 use chrono::{DateTime,Utc};
+#[allow(bare_trait_objects)]
 pub type StdError = std::error::Error;
 pub type StdResult<T> = Result<T,Box<dyn std::error::Error>>;
 pub type Numeric = rust_decimal::Decimal;
@@ -41,16 +42,16 @@ pub struct CurrencyData {
 #[derive(Serialize,Clone)]
 pub struct Position {
   pub name : String,
-  pub symbol : String,
+  pub crypto_id : String,
   // change serialize name
-  #[serde(rename = "totalCost")]
-  pub total_cost : f64,
-  pub qty : f64,
+  #[serde(rename = "currentValue")]
+  pub current_value : Numeric,
+  pub qty : Numeric,
 }
 
 #[derive(Serialize,Clone)]
 pub struct Portfolio {
-  pub balance : f64,
+  pub balance : Numeric,
   pub positions : Vec<Position>
 }
 

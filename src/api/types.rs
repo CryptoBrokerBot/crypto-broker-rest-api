@@ -1,8 +1,6 @@
 // For types specific to the API only
 
-use serde::{Serialize, Deserialize};
-
-pub type Numeric = rust_decimal::Decimal;
+use serde::{Deserialize};
 
 #[derive(Deserialize,Clone,Debug)]
 pub struct GetWalletBalanceRequest {
