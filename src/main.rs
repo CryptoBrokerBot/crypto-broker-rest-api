@@ -2,7 +2,6 @@ extern crate tokio;
 mod config;
 mod types;
 mod persistence;
-use log::info;
 use types::*;
 use config::*;
 use persistence::CryptoPortfolioDao;

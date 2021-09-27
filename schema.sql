@@ -53,14 +53,13 @@ WITH cteLatestPrices AS (
   FROM cryptodata) res WHERE res.rn = 1
 ),
 ctePositions AS (
-  SELECT w.userId, 
+  SELECT t.userId, 
   t.cryptoId, 
   SUM(t.qty) as qty,
   MAX(t.transactionTime) as lastTransactionTs
   FROM transactions t 
-  JOIN wallet w on t.userId = w.userId
   GROUP BY 
-    w.userId,
+    t.userId,
     t.cryptoId
 )
 SELECT userId,
@@ -73,6 +72,7 @@ qty*latestPrice as currentValue,
 lastTransactionTs
 FROM ctePositions p
 JOIN cteLatestPrices lp on p.cryptoId = lp.cryptoId
+WHERE qty > 0
 -- CREATE VIEW vWalletPerformance AS
 
 -- I will finish leaderboards later

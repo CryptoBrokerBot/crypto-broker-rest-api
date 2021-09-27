@@ -8,8 +8,6 @@ edition = "2018"
 
 [dependencies]
 serde = "1.0"
-# https://docs.serde.rs/serde_yaml/index.html
-serde_yaml = "0.8"
 # tokio postgres docs are garbage so just look at  postgres 90% of the time https://docs.rs/postgres/0.15.2/postgres/
 tokio-postgres = {version = "0.7.2", features = ["with-chrono-0_4","runtime"]}
 # https://actix.rs/docs/getting-started/
@@ -18,8 +16,6 @@ actix-web = "4.0.0-beta.9"
 actix-service = "2.0.0"
 # https://docs.rs/chrono/0.4.19/chrono/
 chrono = "0.4.19"
-# https://docs.rs/log/0.4.14/log/
-log = "0.4.14"
 # https://docs.rs/env_logger/0.9.0
 env_logger = "0.9.0"
 
