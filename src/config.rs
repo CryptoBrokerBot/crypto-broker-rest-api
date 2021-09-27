@@ -23,7 +23,7 @@ impl std::fmt::Display for DataSource {
     write!(f, "schema: {}, ", self.schema)?;
     write!(f, "host: {}, ", self.host)?;
     write!(f, "port: {} ", self.port)?;
-    write!(f, "{}", "}");
+    write!(f, "{}", "}")?;
     Ok(())
   }
 }

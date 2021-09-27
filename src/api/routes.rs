@@ -25,6 +25,6 @@ pub async fn daily_reward(state : web::Data<RootAppState>, request : web::Query<
 
 #[put("leaderboard")]
 pub async fn update_server_members(state : web::Data<RootAppState>, request : web::Query<UpdateServerMembersRequest>) -> StdResult<impl Responder> {
-  state.broker_mapper.update_server_patrons(&request.user_ids, request.server_id.clone()).await?;
+  state.broker_mapper.update_server_patrons(&request.user_ids, &request.server_id).await?;
   Ok(HttpResponse::Ok().json(StatusResponse::ok()))
 }

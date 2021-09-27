@@ -54,26 +54,40 @@ create index IDX_transactions on transactions (userId,cryptoId);
 
 CREATE VIEW vPortfolio AS
 WITH cteLatestPrices AS (
-  SELECT id as cryptoId, price as latestPrice FROM (SELECT id, price, ROW_NUMBER() OVER(partition by id order by asOf DESC) as rn
+  SELECT id as cryptoId, symbol, name, price as latestPrice FROM (SELECT id, price, symbol, name, ROW_NUMBER() OVER(partition by id order by asOf DESC) as rn
   FROM cryptodata) res WHERE res.rn = 1
 ),
 ctePositions AS (
-  SELECT w.userId, 
+  SELECT t.userId, 
   t.cryptoId, 
   SUM(t.qty) as qty,
   MAX(t.transactionTime) as lastTransactionTs
   FROM transactions t 
-  JOIN wallet w on t.userId = w.userId
   GROUP BY 
-    w.userId,
+    t.userId,
     t.cryptoId
 )
 SELECT userId,
-p.cryptoId, 
+p.cryptoId,
+lp.symbol,
+lp.name,
+qty,
+latestPrice,
 qty*latestPrice as currentValue,
 lastTransactionTs
 FROM ctePositions p
 JOIN cteLatestPrices lp on p.cryptoId = lp.cryptoId
+WHERE qty > 0;
+
+create view vNetworth AS
+with ctePortfolioValue as (
+	select userId, SUM(currentValue) as portfolioValue from vportfolio v group by userid
+)
+select w.userid, coalesce(pv.portfolioValue,0.0)+w.walletbalance as netWorth 
+from wallet w left join ctePortfolioValue pv on w.userid = pv.userId
+
+
+
 -- CREATE VIEW vWalletPerformance AS
 
 -- I will finish leaderboards later

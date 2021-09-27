@@ -1,11 +1,10 @@
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-use actix_web::{Error, http::HeaderName, ResponseError, http::StatusCode, HttpRequest, HttpResponse, HttpResponseBuilder};
+use actix_web::{Error, ResponseError, http::StatusCode};
 use actix_web::dev::{ServiceRequest, ServiceResponse, Service, Transform};
 use std::future::{Ready, Future, ready};
 
-use crate::types::StatusResponse;
 
 #[derive(Debug)]
 enum ErrorHandlerWrappedError {

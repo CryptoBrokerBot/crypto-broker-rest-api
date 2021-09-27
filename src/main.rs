@@ -1,9 +1,6 @@
-use std::io::BufReader;
-use std::fs::File;
-
-use actix_web::{get, web, App, HttpServer, Responder};
-use serde_yaml;
+use actix_web::{App, HttpServer, middleware::Logger};
 use dotenv::dotenv;
+use env_logger::{init_from_env as init_logger_from_env,Env};
 
 use types::*;
 use persistence::BrokerMapper;
@@ -32,14 +29,17 @@ fn api_key_validatorer(_ : Vec<String>) -> impl FnMut(Option<&str>) -> bool {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()>{
+    init_logger_from_env(Env::new().default_filter_or("info"));
     dotenv().ok();
     let config = load_config();
     let broker_config = config.data_source.clone();
     let api_keys = BrokerMapper::new(&config.data_source).api_keys().await.expect("Unable to load API keys.");
+    #[allow(deprecated)]
     HttpServer::new(move || 
         App::new()
             .data(RootAppState{ broker_mapper: BrokerMapper::new(&broker_config) })
             .wrap(middlewares::apikey::ApiKeyService::from_validator(api_key_validatorer(api_keys.clone())))
+            .wrap(Logger::default())
             .wrap(middlewares::error::ErrorHandlerService)
             .service(api::routes::list)
             .service(api::routes::balance)
