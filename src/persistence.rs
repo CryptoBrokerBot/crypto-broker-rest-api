@@ -2,6 +2,7 @@ use tokio_postgres::{Config as PgConfig,Row,NoTls,Client};
 use crate::config::DataSource;
 use crate::types::*;
 use std::convert::TryFrom;
+use crate::api::types::*;
 
 
 #[derive(Debug)]
@@ -24,34 +25,46 @@ macro_rules! get_client {
   };
 }
 
+#[inline(always)]
+pub fn push<'a>(base : &str, suffix : &str) -> String {
+    let mut heap_base = String::from(base);
+    heap_base.push_str(suffix);
+    return heap_base;
+}
+
 impl BrokerMapper {
+  const CTE_LATEST_LIST : &'static str = r#"
+  with cteLatestPrices as (
+    SELECT asOf,
+      id, 
+      symbol,  
+      name, 
+      price, 
+      image_url, 
+      market_cap,
+      volume,
+      coingecko_timestamp,
+      ROW_NUMBER() OVER (partition by id order by asOf DESC) as rn
+    FROM cryptodata
+  )
+  "#;
+
   
   pub fn new(ds : &DataSource) -> BrokerMapper {
     return BrokerMapper{config : ds.into()};
   }
   
   pub async fn list_currencies(&self) -> StdResult<Vec<CurrencyData>> {
-    let currency_list_query = r#"
-    with cteLatestPrices as (
-      SELECT asOf, 
-        symbol, 
-        name, 
-        price, 
-        image_url, 
-        market_cap,
-        volume,
-        coingecko_timestamp,
-        ROW_NUMBER() OVER (partition by id order by asOf DESC) as rn
-      FROM cryptodata
-    )
+    let currency_list_query = format!("{} {}",BrokerMapper::CTE_LATEST_LIST,r#"
     SELECT * FROM cteLatestPrices 
     WHERE rn = 1 ORDER BY market_cap DESC LIMIT 200;
-    "#;
+    "#);
+    let query = currency_list_query.as_str();
     let conf = self.config.clone();
     let client = get_client!(conf);
     // prob have to spin the connection off
     let mut currency_list = Vec::<CurrencyData>::new();
-    for row in client.query(currency_list_query,&[]).await? {
+    for row in client.query(query,&[]).await? {
       currency_list.push(CurrencyData::try_from(&row)?);
     }
     Ok(currency_list)
@@ -81,7 +94,7 @@ impl BrokerMapper {
     let conf = self.config.clone();
     let client = get_client!(conf);
     let query = r#"
-    SELECT walletBalance FROM wallets WHERE userId = $1 LIMIT 1;
+    SELECT walletBalance FROM wallet WHERE userId = $1 LIMIT 1;
     "#;
     let amount : Numeric = client.query_one(query, &[&user_id.as_ref()]).await?.try_get("walletBalance")?;
     return Ok(amount);
@@ -103,51 +116,48 @@ impl BrokerMapper {
     Ok(())
   }
   
-  pub async fn buy_currency<S : AsRef<str>>(&self, crypto_id : S, qty : Numeric, user_id : S) -> StdResult<()> {
-    // check have enough money
-    let query = r#"
-    do $$
-    declare wbal numeric(50,10) := 0.0;
-    declare qty NUMERIC(50,10) := $2;
-    declare currentPrice NUMERIC(50,10) := NULL;
-    declare l_cryptoId VARCHAR(32) := $1;
-    declare l_userId VARCHAR(256) := $3;
-    begin 
-    if (qty <= 0) then 
-	    raise exception 'Qty must be a positive decimal!';
-    end if;
-    -- fetch current price
-    select price into currentPrice from cryptodata c where c.id = l_cryptoId order by asOf desc limit 1;
-    if (currentPrice is null or currentPrice <= 0.0) then 
-    	  raise exception 'Could not find a nonzero price for %',l_cryptoId;
-    end if;
-   
-    -- explicitly lock the the wallet table in row exclusive mode
-    lock table wallet in row exclusive mode;
-    select w.walletbalance into wbal from wallet w
-    where w.userId = l_userId for update;
-   
-    -- make sure they have enough money
-    if (wbal is null or (wbal - qty*currentPrice) < 0.0) then
-         raise exception 'Insufficient funds';
-    end if;
-   
-    -- update wallet balance
-    update wallet set walletbalance = (wbal - qty*currentPrice);
-    -- create the transaction
-    insert into transactions (userId,cryptoid,cost,buysellindicator,qty) 
-    values (l_userId,l_cryptoId,qty*currentPrice,'B',qty);
-    end $$;
-    select lastval() as transactionId;
-    "#;
+  pub async fn buy_currency<S : AsRef<str>>(&self, crypto_id : &S, qty : &Numeric, user_id : &S) -> StdResult<()> {
     let conf = self.config.clone();
     let client : Client = get_client!(conf);
-    client.execute(query, &[&crypto_id.as_ref(),&qty,&user_id.as_ref()]).await?;
+    client.execute("SELECT * FROM buy_currency($2,$1,$3)", &[&crypto_id.as_ref(),qty,&user_id.as_ref()]).await?;
     Ok(())
+  }
+
+  pub async fn get_coins_matching_key(&self, coin_key : &CoinIdentifierKey) -> StdResult<Vec<CurrencyData>> {
+    
+    let where_conds;
+    let param : &String;
+    if let Some(crypto_id) = &coin_key.crypto_id {
+      where_conds = "id = $1";
+      param = crypto_id;
+    }
+    else if let Some(name) = &coin_key.name {
+      where_conds = "lower(name) = lower($1)";
+      param = name;
+    } 
+    else if let Some(symbol) = &coin_key.symbol {
+      where_conds = "lower(symbol) = lower($1)";
+      param = symbol;
+    } else {
+      return Err(new_std_err("Please spcify an id, name, or symbol"));
+    }
+    let query_tail = format!("{} {} AND {}",BrokerMapper::CTE_LATEST_LIST,r#"
+    SELECT * FROM cteLatestPrices 
+    WHERE rn = 1"#,where_conds);
+    let query = query_tail.as_str();
+    let config = self.config.clone();
+    let client : Client = get_client!(config);
+    Ok(
+      client.query(query, &[param]).await?
+      .iter()
+      .map(|r| CurrencyData::try_from(r).expect("Could not map currency data from row"))
+      .collect()
+    )
+
   }
   
   #[allow(unused_variables)]
-  pub async fn sell_currency<S : AsRef<str>>(&self, crypto_id : S, qty : Numeric, user_id : S) -> StdResult<()> {
+  pub async fn sell_currency<S : AsRef<str>>(&self, crypto_id : S, qty : &Numeric, user_id : S) -> StdResult<()> {
     // check they have enough 
     panic!("unimplemented");
   }
@@ -186,6 +196,7 @@ impl TryFrom<&Row> for CurrencyData {
   fn try_from(row : &Row) -> Result<CurrencyData,Self::Error> {
     Ok(CurrencyData {
       as_of : chrono::DateTime::from_utc(row.try_get::<&str,chrono::NaiveDateTime>("asOf")?,chrono::Utc),
+      id : row.try_get("id")?,
       symbol : row.try_get("symbol")?,
       name : row.try_get("name")?,
       price : row.try_get("price")?,

@@ -7,6 +7,12 @@ pub type StdError = std::error::Error;
 pub type StdResult<T> = Result<T,Box<dyn std::error::Error>>;
 pub type Numeric = rust_decimal::Decimal;
 
+#[inline(always)]
+pub fn new_std_err(msg : &str) -> Box<std::io::Error>{
+    use std::io::{Error,ErrorKind};
+    Box::new(Error::new(ErrorKind::Other,msg))
+}
+
 #[derive(Serialize,Clone,Debug)]
 pub struct StatusResponse {
   pub success : bool,
@@ -27,6 +33,7 @@ pub struct CurrencyData {
   // #[serde(rename = "asOf")]
   #[serde(with = "date_formatter", rename = "asOf")]
   pub as_of : DateTime<Utc>,
+  pub id : String,
   pub symbol : String,
   pub name : String,
   pub price : Numeric,

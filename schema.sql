@@ -88,6 +88,35 @@ from wallet w left join ctePortfolioValue pv on w.userid = pv.userId
 
 
 
--- CREATE VIEW vWalletPerformance AS
+create function buy_currency(qty numeric(50,10), l_cryptoId VARCHAR(32), l_userId VARCHAR(256)) returns void AS
+ $BODY$
+declare wbal numeric(50,10) := 0.0;
+declare currentPrice NUMERIC(50,10) := NULL;
+EGIN
+if (qty <= 0) then 
+ raise exception 'Qty must be a positive decimal!';
+end if;
+-- fetch current price
+select price into currentPrice from cryptodata c where c.id = l_cryptoId order by asOf desc limit 1;
+if (currentPrice is null or currentPrice <= 0.0) then 
+	  raise exception 'Could not find a nonzero price for %',l_cryptoId;
+end if;
+-- explicitly lock the the wallet table in row exclusive mode
+lock table wallet in row exclusive mode;
+select w.walletbalance into wbal from wallet w
+where w.userId = l_userId for update;
+-- make sure they have enough money
+if (wbal is null or (wbal - qty*currentPrice) < 0.0) then
+     raise exception 'Insufficient funds';
+end if;
+-- update wallet balance
+update wallet set walletbalance = (wbal - qty*currentPrice);
+-- create the transaction
+insert into transactions (userId,cryptoid,cost,buysellindicator,qty) 
+values (l_userId,l_cryptoId,qty*currentPrice,'B',qty);
+end $BODY$
+ LANGUAGE 'plpgsql' 
+OST 100;
+CREATE VIEW vWalletPerformance AS
 
 -- I will finish leaderboards later

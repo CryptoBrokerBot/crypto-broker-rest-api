@@ -31,6 +31,7 @@ fn api_key_validatorer(_ : Vec<String>) -> impl FnMut(Option<&str>) -> bool {
 async fn main() -> std::io::Result<()>{
     init_logger_from_env(Env::new().default_filter_or("info"));
     dotenv().ok();
+
     let config = load_config();
     let broker_config = config.data_source.clone();
     let api_keys = BrokerMapper::new(&config.data_source).api_keys().await.expect("Unable to load API keys.");
@@ -45,6 +46,9 @@ async fn main() -> std::io::Result<()>{
             .service(api::routes::balance)
             .service(api::routes::daily_reward)
             .service(api::routes::update_server_members)
+            .service(api::routes::get_coin)
+            .service(api::routes::buy_currency)
+            .service(api::routes::get_portfolio)
     )
     .bind("0.0.0.0:8080")?
     .run()
