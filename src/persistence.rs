@@ -157,9 +157,12 @@ impl BrokerMapper {
   }
   
   #[allow(unused_variables)]
-  pub async fn sell_currency<S : AsRef<str>>(&self, crypto_id : S, qty : &Numeric, user_id : S) -> StdResult<()> {
+  pub async fn sell_currency<S : AsRef<str>>(&self, crypto_id : &S, qty : &Numeric, user_id : &S) -> StdResult<()> {
     // check they have enough 
-    panic!("unimplemented");
+    let conf = self.config.clone();
+    let client : Client = get_client!(conf);
+    client.execute("SELECT * FROM buy_currency($1,$2,$3)", &[qty,&crypto_id.as_ref(),&user_id.as_ref()]).await?;
+    Ok(())
   }
   
   pub async fn get_portfolio<S : AsRef<str>>(&self, user_id : &S) -> StdResult<Portfolio> {

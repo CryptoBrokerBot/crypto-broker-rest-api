@@ -32,15 +32,17 @@ pub struct CoinIdentifierKey {
 }
 
 #[derive(Deserialize,Clone,Debug)]
-pub struct BuyCoinRequest {
+/// Describes a requested transaction. Each transaction has a coin key, user id, and a qty of coin to be bought or sold
+pub struct CoinTransactionRequest {
   pub user_id : String,
   pub qty : Numeric,
+  /// Allows the request to specify any of the fields in CoinIdentiferKey, and the server will try to resolve the correct coin from the info given if possible
   #[serde(flatten)]
   pub coin_key : CoinIdentifierKey
 }
 
 #[derive(Serialize,Debug)]
-pub struct BuyCoinResponse {
+pub struct CoinTransactionResponse {
   pub msg : String,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub currencies : Option<Vec<CurrencyData>>

@@ -92,7 +92,7 @@ create function buy_currency(qty numeric(50,10), l_cryptoId VARCHAR(32), l_userI
  $BODY$
 declare wbal numeric(50,10) := 0.0;
 declare currentPrice NUMERIC(50,10) := NULL;
-EGIN
+BEGIN
 if (qty <= 0) then 
  raise exception 'Qty must be a positive decimal!';
 end if;
@@ -116,7 +116,37 @@ insert into transactions (userId,cryptoid,cost,buysellindicator,qty)
 values (l_userId,l_cryptoId,qty*currentPrice,'B',qty);
 end $BODY$
  LANGUAGE 'plpgsql' 
-OST 100;
-CREATE VIEW vWalletPerformance AS
+COST 100;
+
+-- create sell_currency fn
+create function sell_currency(qty numeric(50,10), l_cryptoId VARCHAR(32), l_userId VARCHAR(256)) returns void AS
+ $BODY$
+declare ownedAmnt numeric(50,10) := 0.0;
+declare currentPrice NUMERIC(50,10) := NULL;
+BEGIN
+if (qty <= 0) then 
+ raise exception 'Qty must be a positive decimal!';
+end if;
+-- fetch current price
+select price into currentPrice from cryptodata c where c.id = l_cryptoId order by asOf desc limit 1;
+if (currentPrice is null or currentPrice <= 0.0) then 
+	  raise exception 'Could not find a nonzero price for %',l_cryptoId;
+end if;
+-- explicitly lock the the transactions table to prevent overselling
+lock table transactions;
+
+select SUM(t.qty) into ownedAmnt from transactions t where t.userid = l_userId and t.cryptoid = l_cryptoId;
+-- make sure they have enough coin
+if (ownedAmnt is null or ownedAmnt < qty) then
+     raise exception 'Insufficient funds';
+end if;
+-- update wallet balance
+update wallet set walletbalance = (walletbalance + qty*currentPrice);
+-- create the transaction
+insert into transactions (userId,cryptoid,cost,buysellindicator,qty) 
+values (l_userId,l_cryptoId,-1*qty*currentPrice,'S',-1*qty);
+end $BODY$
+ LANGUAGE 'plpgsql' 
+COST 100;
 
 -- I will finish leaderboards later

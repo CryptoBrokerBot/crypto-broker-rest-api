@@ -28,18 +28,42 @@ pub async fn get_portfolio(state : web::Data<RootAppState>, params : web::Query<
 
 
 #[post("/buy")]
-pub async fn buy_currency(state : web::Data<RootAppState>, params : web::Query<BuyCoinRequest>) -> StdResult<impl Responder> {
-  let coins : Vec<CurrencyData> = state.broker_mapper.get_coins_matching_key(&params.coin_key).await?;
-  if coins.is_empty() {
-    return Ok((web::Json(BuyCoinResponse{msg:String::from("No coin found matching criteria!"),currencies:None}),actix_web::http::StatusCode::BAD_REQUEST));
-  }
-  if coins.len() > 1 {
-    return Ok((web::Json(BuyCoinResponse{msg:String::from("Multiple coins found!"),currencies: Some(coins)}),actix_web::http::StatusCode::BAD_REQUEST));
-  }
-  let coin_id : &CurrencyData = coins.get(0).unwrap();
+pub async fn buy_currency(state : web::Data<RootAppState>, params : web::Query<CoinTransactionRequest>) -> StdResult<impl Responder> {
+  let coin = match coin_from_key(&state, &params.coin_key).await {
+    Ok(c) => c, Err(resp) => return Ok(resp)
+  };
+  state.broker_mapper.buy_currency(&coin.id,&params.qty,&params.user_id).await?;
+  Ok((web::Json(CoinTransactionResponse{msg:String::from("Success"),currencies:None}),actix_web::http::StatusCode::OK))
+}
 
-  state.broker_mapper.buy_currency(&coin_id.id,&params.qty,&params.user_id).await?;
-  Ok((web::Json(BuyCoinResponse{msg:String::from("Success"),currencies:None}),actix_web::http::StatusCode::OK))
+#[post("/sell")]
+pub async fn sell_currency(state : web::Data<RootAppState>, params : web::Query<CoinTransactionRequest>) -> StdResult<impl Responder> {
+  let coin = match coin_from_key(&state, &params.coin_key).await {
+    Ok(c) => c, Err(resp) => return Ok(resp)
+  };
+  state.broker_mapper.sell_currency(&coin.id, &params.qty, &params.user_id).await?;
+  Ok((web::Json(CoinTransactionResponse{msg:String::from("Success"), currencies: None}),actix_web::http::StatusCode::OK))
+}
+
+#[inline(always)]
+/// Resolves a coin identifer tuple to either a response (in the case that the identifier is ambiguous or no coin found), or a coin if exactly one could be found with the 
+/// information present
+async fn coin_from_key(state : &web::Data<RootAppState>, coin_key : &CoinIdentifierKey) -> Result<CurrencyData, (web::Json<CoinTransactionResponse>,actix_web::http::StatusCode)>{
+  let coins_res : StdResult<Vec<CurrencyData>> = state.broker_mapper.get_coins_matching_key(coin_key).await;
+  match coins_res {
+    Ok(mut coins) => {
+      if coins.is_empty() {
+        return Err((web::Json(CoinTransactionResponse{msg:String::from("No coin found matching criteria!"),currencies:None}),actix_web::http::StatusCode::BAD_REQUEST));
+      }
+      if coins.len() > 1 {
+        return Err((web::Json(CoinTransactionResponse{msg:String::from("Multiple coins found!"),currencies: Some(coins)}),actix_web::http::StatusCode::MULTIPLE_CHOICES));
+      }
+      return Ok(coins.remove(0));
+    },
+    Err(_) => {
+      return Err((web::Json(CoinTransactionResponse{msg:String::from(format!("Failed retrieving coins for identifer tuple {:?}",coin_key)),currencies:None}),actix_web::http::StatusCode::INTERNAL_SERVER_ERROR));
+    }
+  }
 }
 
 
