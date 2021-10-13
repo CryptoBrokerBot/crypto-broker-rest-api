@@ -46,6 +46,14 @@ pub struct CurrencyData {
   pub coingecko_timestamp : String
 }
 
+#[derive(Serialize,Clone,Debug)]
+pub struct TimeSeriesPoint {
+  #[serde(with = "date_formatter", rename = "asOf")]
+  pub as_of : DateTime<Utc>,
+  pub price : Numeric,
+  pub diff : Numeric
+}
+
 #[derive(Serialize,Clone)]
 pub struct Position {
   pub name : String,

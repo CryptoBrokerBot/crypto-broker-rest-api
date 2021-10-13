@@ -11,6 +11,7 @@ pub mod types;
 pub mod persistence;
 mod api;
 mod middlewares;
+mod perf;
 
 // Validates API keys when in release build
 #[cfg(not(debug_assertions))]
@@ -32,7 +33,7 @@ async fn main() -> std::io::Result<()>{
     init_logger_from_env(Env::new().default_filter_or("info"));
     dotenv().ok();
 
-    let config = load_config();
+    let config : config::Config = load_config();
     let broker_config = config.data_source.clone();
     let api_keys = BrokerMapper::new(&config.data_source).api_keys().await.expect("Unable to load API keys.");
     #[allow(deprecated)]
@@ -49,6 +50,7 @@ async fn main() -> std::io::Result<()>{
             .service(api::routes::get_coin)
             .service(api::routes::buy_currency)
             .service(api::routes::get_portfolio)
+            .service(api::routes::sell_currency)
     )
     .bind("0.0.0.0:8080")?
     .run()
