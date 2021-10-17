@@ -16,7 +16,8 @@ pub async fn list(state : web::Data<RootAppState>) -> StdResult<impl Responder> 
 #[get("/balance")]
 pub async fn balance(state : web::Data<RootAppState>, params : web::Query<GetWalletBalanceRequest>) -> StdResult<impl Responder> {
   // TODO: Have a way to indicate the difference between a non-existant wallet and an actual error.
-  json_ok!(state.broker_mapper.get_wallet_balance_by_userid(&params.user_id).await?)
+  let balance = state.broker_mapper.get_wallet_balance_by_userid(&params.user_id).await?;
+  json_ok!(GetWalletBalanceResponse { user_id : params.user_id.clone(), balance })
 }
 
 

@@ -108,9 +108,9 @@ impl BrokerMapper {
       wallet (userId, walletBalance)
     VALUES
       ($1, $2)
-    ON CONFLICT userId
+    ON CONFLICT (userId)
     DO
-      UPDATE SET walletBalance = $2 WHERE userId = $1;
+      UPDATE SET walletBalance = $2;
     "#;
     client.execute(query, &[&user_id, &bal]).await?;
     Ok(())

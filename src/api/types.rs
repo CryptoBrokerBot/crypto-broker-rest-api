@@ -3,6 +3,12 @@
 use serde::{Deserialize,Serialize};
 use crate::types::*;
 
+#[derive(Serialize,Clone,Debug)]
+pub struct GetWalletBalanceResponse {
+  pub user_id : String,
+  pub balance : Numeric
+}
+
 #[derive(Deserialize,Clone,Debug)]
 pub struct GetWalletBalanceRequest {
   pub user_id : String
