@@ -41,13 +41,13 @@ impl From<&DataSource> for PgConfig {
 }
 
 pub fn load_config() -> Config {
-  Config {
+  return Config {
     data_source : DataSource {
       username : dotenv::var("CB_DBUSER").expect("Missing database username. Try adding `CB_DBUSER` environment variable."),
       password : dotenv::var("CB_DBPASS").expect("Missing database password. Try adding `CB_DBPASS` environment variable."),
       schema : dotenv::var("CB_DBSCHEMA").expect("Missing database schema. Try adding `CB_DBSCHEMA` environment variable."),
-      port : dotenv::var("CB_DBPORT").expect("Missing database port. Try adding `CB_DBPORT` environment variable.").parse::<u16>().expect("CB_DBPORT must be an unsigned integer 0-65535"),
+      port : dotenv::var("CB_DBPORT").ok().unwrap_or(String::from("5432")).parse::<u16>().expect("CB_DBPORT must be an unsigned integer 0-65535"),
       host : dotenv::var("CB_DBHOST").expect("Missing database host. Try adding `CB_DBHOST` environment variable.")
     }
-  }
+  };
 }

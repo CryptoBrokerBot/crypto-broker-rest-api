@@ -12,6 +12,7 @@ pub mod persistence;
 mod api;
 mod middlewares;
 mod perf;
+mod datetime_formatters;
 
 // Validates API keys when in release build
 #[cfg(not(debug_assertions))]
@@ -51,6 +52,7 @@ async fn main() -> std::io::Result<()>{
             .service(api::routes::buy_currency)
             .service(api::routes::get_portfolio)
             .service(api::routes::sell_currency)
+            .service(api::routes::get_performance)
     )
     .bind("0.0.0.0:8080")?
     .run()

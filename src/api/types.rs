@@ -1,7 +1,11 @@
 // For types specific to the API only
 
 use serde::{Deserialize,Serialize};
+use serde;
 use crate::types::*;
+use chrono::{DateTime,Utc};
+use chrono::serde::ts_seconds_option;
+use crate::datetime_formatters::*;
 
 #[derive(Deserialize,Clone,Debug)]
 pub struct GetWalletBalanceRequest {
@@ -46,4 +50,42 @@ pub struct CoinTransactionResponse {
   pub msg : String,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub currencies : Option<Vec<CurrencyData>>
+}
+
+
+
+#[derive(Deserialize,Debug,Clone)]
+pub enum GraphGranularity {
+  IntraDay,
+  Daily,
+  Weekly,
+  Monthly,
+  Quarterly,
+  Anually
+}
+
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct GraphGenerationOptions {
+  pub width : u32,
+  pub height : u32,
+  pub caption : String,
+  pub from : DateTime<Utc>,
+  pub to : DateTime<Utc>,
+  pub granularity : GraphGranularity
+}
+
+#[derive(Deserialize,Debug,Clone)]
+pub struct CoinPerformanceRequest {
+  #[serde(flatten)]
+  pub coin_key : CoinIdentifierKey,
+  
+  pub width : u32,
+  pub height : u32,
+  pub caption : Option<String>,
+  #[serde(with = "ts_seconds_option")]
+  pub from : Option<DateTime<Utc>>,
+  #[serde(with = "ts_seconds_option")]
+  pub to : Option<DateTime<Utc>>,
+  pub granularity : Option<GraphGranularity>
 }

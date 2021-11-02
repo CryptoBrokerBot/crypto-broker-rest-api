@@ -13,9 +13,12 @@ tokio-postgres = {version = "0.7.2", features = ["with-chrono-0_4","runtime"]}
 # https://actix.rs/docs/getting-started/
 actix-web = "4.0.0-beta.9"
 # https://docs.rs/chrono/0.4.19/chrono/
-chrono = "0.4.19"
+chrono = {version = "0.4.19", features = ["serde"]}
 tokio = {version = "1", features = ["full"] }
 dotenv = "0.15.0"
 env_logger = "0.9.0"
-
+itertools = "0.10.1"
 rust_decimal = {version = "1.16.0", features = ["db-tokio-postgres","serde-float"]}
+
+# https://docs.rs/plotters/0.3.1/plotters/index.html
+plotters = "0.3.1"

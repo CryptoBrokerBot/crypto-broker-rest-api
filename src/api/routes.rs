@@ -28,7 +28,7 @@ pub async fn get_portfolio(state : web::Data<RootAppState>, params : web::Query<
 
 
 #[post("/buy")]
-pub async fn buy_currency(state : web::Data<RootAppState>, params : web::Query<CoinTransactionRequest>) -> StdResult<impl Responder> {
+pub async fn buy_currency(state : web::Data<RootAppState>, params : web::Json<CoinTransactionRequest>) -> StdResult<impl Responder> {
   let coin = match coin_from_key(&state, &params.coin_key).await {
     Ok(c) => c, Err(resp) => return Ok(resp)
   };
@@ -37,7 +37,7 @@ pub async fn buy_currency(state : web::Data<RootAppState>, params : web::Query<C
 }
 
 #[post("/sell")]
-pub async fn sell_currency(state : web::Data<RootAppState>, params : web::Query<CoinTransactionRequest>) -> StdResult<impl Responder> {
+pub async fn sell_currency(state : web::Data<RootAppState>, params : web::Json<CoinTransactionRequest>) -> StdResult<impl Responder> {
   let coin = match coin_from_key(&state, &params.coin_key).await {
     Ok(c) => c, Err(resp) => return Ok(resp)
   };
@@ -86,4 +86,28 @@ pub async fn daily_reward(state : web::Data<RootAppState>, request : web::Query<
 pub async fn update_server_members(state : web::Data<RootAppState>, request : web::Query<UpdateServerMembersRequest>) -> StdResult<impl Responder> {
   state.broker_mapper.update_server_patrons(&request.user_ids, &request.server_id).await?;
   json_ok!(StatusResponse::ok())
+}
+
+#[get("/performance")]
+pub async fn get_performance(state : web::Data<RootAppState>, params : web::Query<CoinPerformanceRequest>) -> actix_web::Result<impl Responder> {
+  use chrono::{Utc};
+  let coin = match coin_from_key(&state, &params.coin_key).await {
+    Ok(c) => c, Err(resp) => {
+      return Ok(actix_web::HttpResponseBuilder::new(resp.1).json(resp.0));
+    }
+  };
+
+  let opts = GraphGenerationOptions {
+    width : params.width,
+    height : params.height,
+    caption : params.caption.clone().unwrap_or(coin.id.clone()),
+    from : params.from.clone().expect("Could not get from"),
+    to : params.to.clone().expect("Could not get to"),
+    granularity : params.granularity.clone().unwrap_or(GraphGranularity::IntraDay)
+  };
+  let time_series : Vec<CandleStickData> = state.broker_mapper.get_candle_sticks(&opts.from, &opts.to,&coin.id,&opts.granularity).await?;
+  use crate::perf::CoinPerformanceGraph;
+  let graph = CoinPerformanceGraph::from_candle_sticks(&time_series, &opts );
+  
+  Ok(graph.into())
 }

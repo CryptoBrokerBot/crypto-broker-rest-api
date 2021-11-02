@@ -191,6 +191,77 @@ impl BrokerMapper {
     }
     Ok(())
   }
+
+  pub async fn get_time_series<S : AsRef<str>>(&self, start : &chrono::DateTime<chrono::Utc>, end : &chrono::DateTime<chrono::Utc>, crypto_id : &S) -> StdResult<Vec<TimeSeriesData>> {
+    let query = r#"
+    select asOf, price  from cryptodata c where c.id = $1 and asOf between $2 and $3 order by asOf
+    "#;
+    let conf = self.config.clone();
+    let client : Client = get_client!(conf);
+    Ok(client.query(query,&[&crypto_id.as_ref(), &start.naive_utc(),&end.naive_utc()]).await?.iter().map(|r| TimeSeriesData::try_from(r).expect("Could not get data from row")).collect())
+  }
+
+  pub async fn get_candle_sticks<S : AsRef<str>>(&self, start : &chrono::DateTime<chrono::Utc>, end : &chrono::DateTime<chrono::Utc>, crypto_id : &S, gran : &GraphGranularity) -> StdResult<Vec<CandleStickData>> {
+    if *end <= *start {return Err(new_std_err("Please spcify an id, name, or symbol"));}
+    let query = r#"with cteBuckets as (
+      select asOf, price, NTILE($1) over (order by asOf) as bucket from public.cryptodata c 
+      where id = $2 and 
+      asOf between $3 and $4
+      order by asOf
+    ),cteFirstLast as (
+      select bucket,
+      asOf,
+      MIN(price) over (partition by bucket order by asOf) as low, 
+      MAX(price) over (partition by bucket order by asOf) as high, 
+      first_value(price) over (partition by bucket order by asOf) as "open",
+      last_value(price) over (partition by bucket order by asOf) as "close",
+      ROW_NUMBER() over (partition by bucket order by asOf desc) as rn
+      from cteBuckets order by asof
+    )
+    select asOf as openDateTime, low, high, "open", "close" from cteFirstLast where rn = 1"#;
+    let diff : chrono::Duration = *end - *start;
+    const MINUTES_PER_HOUR : i64 = 60;
+    const DAYS_PER_YEAR : i64 = 365;
+    const DAYS_PER_QUARTER : i64 = DAYS_PER_YEAR / 4;
+    const WEEKS_PER_MONTH : i64 = 4;
+
+    let num_of_buckets : i64 = match gran {
+      // divide into 2 hour increments for intraday
+      GraphGranularity::IntraDay => diff.num_minutes() / (2 * MINUTES_PER_HOUR),
+      GraphGranularity::Daily => diff.num_days(),
+      GraphGranularity::Weekly => diff.num_weeks(),
+      GraphGranularity::Monthly => diff.num_weeks() / WEEKS_PER_MONTH,
+      GraphGranularity::Quarterly => diff.num_days() / DAYS_PER_QUARTER,
+      GraphGranularity::Anually => diff.num_days() / DAYS_PER_YEAR
+    };
+    
+    let conf = self.config.clone();
+    let client : Client = get_client!(conf);
+    Ok(client.query(query, &[&(num_of_buckets as i32),&crypto_id.as_ref(),&start.naive_utc(),&end.naive_utc()]).await?.iter().map(|row| CandleStickData::try_from(row).expect("Could not create candlestick")).collect())
+  }
+}
+
+impl TryFrom<&Row> for CandleStickData {
+  type Error = tokio_postgres::error::Error;
+  fn try_from(row : &Row) -> Result<CandleStickData,Self::Error> {
+    Ok(CandleStickData{
+      open_date_time: chrono::DateTime::from_utc(row.try_get::<&str,chrono::NaiveDateTime>("openDateTime")?,chrono::Utc),
+      low: row.try_get("low")?,
+      high: row.try_get("high")?,
+      open: row.try_get("open")?,
+      close: row.try_get("close")?
+  })
+  }
+}
+
+impl TryFrom<&Row> for TimeSeriesData {
+  type Error = tokio_postgres::error::Error;
+  fn try_from(row : &Row) -> Result<TimeSeriesData,Self::Error> {
+    Ok(TimeSeriesData{
+      as_of: chrono::DateTime::from_utc(row.try_get::<&str,chrono::NaiveDateTime>("asOf")?,chrono::Utc),
+      price : row.try_get("price")?
+    })
+  }
 }
 
 impl TryFrom<&Row> for CurrencyData {

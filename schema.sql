@@ -51,11 +51,16 @@ create index IDX_transactions on transactions (userId,cryptoId);
 
 
 -- portfolio, and leaderboards should be views since they inherently change all the time and can be calculated from the data above
+create or replace view vPortfolio AS
+WITH 
+cteLatestPrices AS (
+select cd.id as cryptoId, symbol, name, price as latestPrice
+from 
+    (select max(asOf) as maxAsOf, id from cryptodata group by id) as m,
+    cryptodata cd
+where 
+    cd.id = m.id and cd.asOf = m.maxAsOf
 
-CREATE VIEW vPortfolio AS
-WITH cteLatestPrices AS (
-  SELECT id as cryptoId, symbol, name, price as latestPrice FROM (SELECT id, price, symbol, name, ROW_NUMBER() OVER(partition by id order by asOf DESC) as rn
-  FROM cryptodata) res WHERE res.rn = 1
 ),
 ctePositions AS (
   SELECT t.userId, 
@@ -78,6 +83,7 @@ lastTransactionTs
 FROM ctePositions p
 JOIN cteLatestPrices lp on p.cryptoId = lp.cryptoId
 WHERE qty > 0;
+
 
 create view vNetworth AS
 with ctePortfolioValue as (
