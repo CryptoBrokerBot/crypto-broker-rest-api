@@ -78,8 +78,8 @@ pub async fn daily_reward(state : web::Data<RootAppState>, request : web::Query<
   json_ok!(StatusResponse::ok())
 }
 
-#[put("leaderboard")]
-pub async fn update_server_members(state : web::Data<RootAppState>, request : web::Query<UpdateServerMembersRequest>) -> StdResult<impl Responder> {
+#[put("/leaderboard")]
+pub async fn update_server_members(state : web::Data<RootAppState>, request : web::Json<UpdateServerMembersRequest>) -> StdResult<impl Responder> {
   state.broker_mapper.update_server_patrons(&request.user_ids, &request.server_id).await?;
   json_ok!(StatusResponse::ok())
 }
