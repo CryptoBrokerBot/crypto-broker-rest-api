@@ -35,20 +35,31 @@ pub fn push<'a>(base : &str, suffix : &str) -> String {
 impl BrokerMapper {
   const CTE_LATEST_LIST : &'static str = r#"
   with cteLatestPrices as (
-    SELECT asOf,
-      id, 
-      symbol,  
-      name, 
-      price, 
-      image_url, 
-      market_cap,
-      volume,
-      coingecko_timestamp,
-      ROW_NUMBER() OVER (partition by id order by asOf DESC) as rn
-    FROM cryptodata
+    select 
+      actd.*
+    from
+      (select 
+        asOf,
+        id, 
+        symbol,
+        name,
+        price,
+        image_url, 
+        market_cap,
+        volume,
+        coingecko_timestamp
+      from cryptodata) as actd,
+      (select
+        symbol,
+        max(asOf) as latest_asof
+      from 
+        cryptodata
+      group by
+        symbol 
+      ) as lctd
+    where actd.symbol = lctd.symbol and actd.asOf=lctd.latest_asof
   )
   "#;
-
   
   pub fn new(ds : &DataSource) -> BrokerMapper {
     return BrokerMapper{config : ds.into()};
@@ -57,7 +68,7 @@ impl BrokerMapper {
   pub async fn list_currencies(&self) -> StdResult<Vec<CurrencyData>> {
     let currency_list_query = format!("{} {}",BrokerMapper::CTE_LATEST_LIST,r#"
     SELECT * FROM cteLatestPrices 
-    WHERE rn = 1 ORDER BY market_cap DESC LIMIT 200;
+    ORDER BY market_cap DESC LIMIT 200;
     "#);
     let query = currency_list_query.as_str();
     let conf = self.config.clone();
