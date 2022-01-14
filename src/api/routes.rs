@@ -20,13 +20,10 @@ pub async fn balance(state : web::Data<RootAppState>, params : web::Query<GetWal
   json_ok!(GetWalletBalanceResponse { user_id : params.user_id.clone(), balance })
 }
 
-
 #[get("/portfolio")]
 pub async fn get_portfolio(state : web::Data<RootAppState>, params : web::Query<GetPortfolioRequest>) -> StdResult<impl Responder> {
   json_ok!(state.broker_mapper.get_portfolio(&params.user_id).await?)
 }
-
-
 
 #[post("/buy")]
 pub async fn buy_currency(state : web::Data<RootAppState>, params : web::Query<CoinTransactionRequest>) -> StdResult<impl Responder> {
@@ -67,12 +64,10 @@ async fn coin_from_key(state : &web::Data<RootAppState>, coin_key : &CoinIdentif
   }
 }
 
-
 #[get("/coin")]
 pub async fn get_coin(state : web::Data<RootAppState>, params : web::Query<CoinIdentifierKey>) -> StdResult<impl Responder> {
   return json_ok!(state.broker_mapper.get_coins_matching_key(&params).await?);
 }
-
 
 #[post("/daily-reward")]
 pub async fn daily_reward(state : web::Data<RootAppState>, request : web::Query<DailyRewardRequest>) -> StdResult<impl Responder> {

@@ -4,12 +4,10 @@ use crate::types::*;
 use std::convert::TryFrom;
 use crate::api::types::*;
 
-
 #[derive(Debug)]
 pub struct BrokerMapper {
   config : PgConfig,
 }
-
 
 macro_rules! get_client {
   ($a : ident) => {
@@ -135,7 +133,6 @@ impl BrokerMapper {
   }
 
   pub async fn get_coins_matching_key(&self, coin_key : &CoinIdentifierKey) -> StdResult<Vec<CurrencyData>> {
-    
     let where_conds;
     let param : &String;
     if let Some(crypto_id) = &coin_key.crypto_id {
@@ -164,7 +161,6 @@ impl BrokerMapper {
       .map(|r| CurrencyData::try_from(r).expect("Could not map currency data from row"))
       .collect()
     )
-
   }
   
   #[allow(unused_variables)]
@@ -188,7 +184,6 @@ impl BrokerMapper {
     let conf = self.config.clone();
     let client = get_client!(conf);
     // update_server_patrons(user_ids, server_id.as_ref(), &client).await
-
     let query = r#"
     INSERT INTO
       server_patrons(serverId, userId)

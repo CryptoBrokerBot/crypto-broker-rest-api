@@ -62,7 +62,6 @@ pub struct Portfolio {
   pub positions : Vec<Position>
 }
 
-
 pub struct RootAppState {
     pub broker_mapper : BrokerMapper
 }
