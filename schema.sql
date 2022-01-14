@@ -29,7 +29,8 @@ CREATE TABLE apikeys (
 CREATE TABLE serverpatrons (
   serverId VARCHAR(256),
   userId VARCHAR(256),
-  ts TIMESTAMP NOT NULL DEFAULT NOW()
+  ts TIMESTAMP NOT NULL DEFAULT NOW(),
+  UNIQUE(serverId, userId)
 );
 CREATE INDEX IDX_serverpatrons_serverId on serverpatrons(serverId);
 

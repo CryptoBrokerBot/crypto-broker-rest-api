@@ -186,7 +186,7 @@ impl BrokerMapper {
     // update_server_patrons(user_ids, server_id.as_ref(), &client).await
     let query = r#"
     INSERT INTO
-      server_patrons(serverId, userId)
+      serverpatrons(serverId, userId)
     VALUES
       ($1, $2)
     ON CONFLICT (serverId, userId)
