@@ -12,7 +12,7 @@ CREATE TABLE cryptodata (
 );
 
 CREATE INDEX IDX_cryptoname ON cryptodata(name); -- name lookups are now fast :)
-
+CREATE INDEX IDX_cryptoasof ON cryptodata(asOf); 
 
 -- Wallet for each user for each server, each user can participate in multiple servers.
 CREATE TABLE wallet (
