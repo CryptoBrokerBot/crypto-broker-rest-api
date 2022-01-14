@@ -149,9 +149,9 @@ impl BrokerMapper {
     } else {
       return Err(new_std_err("Please spcify an id, name, or symbol"));
     }
-    let query_tail = format!("{} {} AND {}",BrokerMapper::CTE_LATEST_LIST,r#"
+    let query_tail = format!("{} {} {}",BrokerMapper::CTE_LATEST_LIST,r#"
     SELECT * FROM cteLatestPrices 
-    WHERE rn = 1"#,where_conds);
+    WHERE "#,where_conds);
     let query = query_tail.as_str();
     let config = self.config.clone();
     let client : Client = get_client!(config);
