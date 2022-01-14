@@ -34,11 +34,11 @@ pub fn push<'a>(base : &str, suffix : &str) -> String {
 
 impl BrokerMapper {
   const CTE_LATEST_LIST : &'static str = r#"
-  with cteLatestPrices as (
-    select 
+  WITH cteLatestPrices AS (
+    SELECT 
       actd.*
-    from
-      (select 
+    FROM
+      (SELECT 
         asOf,
         id, 
         symbol,
@@ -48,16 +48,16 @@ impl BrokerMapper {
         market_cap,
         volume,
         coingecko_timestamp
-      from cryptodata) as actd,
-      (select
+      FROM cryptodata) AS actd,
+      (SELECT
         symbol,
-        max(asOf) as latest_asof
-      from 
+        max(asOf) AS latest_asof
+      FROM 
         cryptodata
-      group by
+      GROUP BY
         symbol 
-      ) as lctd
-    where actd.symbol = lctd.symbol and actd.asOf=lctd.latest_asof
+      ) AS lctd
+    WHERE actd.symbol = lctd.symbol AND actd.asOf=lctd.latest_asof
   )
   "#;
   
